@@ -1,1 +1,1 @@
-web: bin/filmsapi
+web: bin/filmflix

@@ -1,4 +1,4 @@
-package main
+package film_api
 
 import (
 	"context"
