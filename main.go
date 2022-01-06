@@ -15,10 +15,7 @@ var client *mongo.Client
 var filmColl *mongo.Collection
 
 func main() {
-	err := godotenv.Load(".env")
-	if err != nil {
-		return
-	}
+	_ = godotenv.Load(".env")
 
 	client = ConnectToDB()
 	filmColl = GetCollection(client, "films", "films")
@@ -38,7 +35,7 @@ func main() {
 	apiRoutes.DELETE("/films/:id", deleteFilm)
 	apiRoutes.GET("/films/:id", getFilmByID)
 
-	err = router.Run(":" + os.Getenv("PORT"))
+	err := router.Run(":" + os.Getenv("PORT"))
 	if err != nil {
 		return
 	}
