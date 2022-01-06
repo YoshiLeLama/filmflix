@@ -42,7 +42,8 @@ func main() {
 }
 
 func serveApp(c *gin.Context) {
-	c.File("./app/index.html")
+	c.Status(http.StatusOK)
+	c.File("app/index.html")
 }
 func serveJS(c *gin.Context) {
 	if matched, _ := regexp.Match(`js\z`, []byte(c.Request.RequestURI)); matched {
