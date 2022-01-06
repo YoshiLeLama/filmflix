@@ -1,0 +1,32 @@
+[
+    {
+        "id": "61d611d1b61413ec06e55a83",
+        "title": "The Professional",
+        "original_title": "Léon",
+        "description": "Mathilda (Natalie Portman) is only 12 years old, but is already familiar with the dark side of life: her abusive father stores drugs for corrupt police officers, and her mother neglects her. Léon (Jean Reno), who lives down the hall, tends to his houseplants and works as a hired hitman for mobster Tony (Danny Aiello). When her family is murdered by crooked DEA agent Stansfield (Gary Oldman), Mathilda joins forces with a reluctant Léon to learn his deadly trade and avenge her family's deaths. ",
+        "director": "Luc Besson",
+        "movie_banner": "",
+        "release_date": "1994",
+        "rt_score": "74"
+    },
+    {
+        "id": "61d611d1b61413ec06e55a84",
+        "title": "Jurassic Park",
+        "original_title": "Jurassic Park",
+        "description": "In Steven Spielberg's massive blockbuster, paleontologists Alan Grant (Sam Neill) and Ellie Sattler (Laura Dern) and mathematician Ian Malcolm (Jeff Goldblum) are among a select group chosen to tour an island theme park populated by dinosaurs created from prehistoric DNA. While the park's mastermind, billionaire John Hammond (Richard Attenborough), assures everyone that the facility is safe, they find out otherwise when various ferocious predators break free and go on the hunt. ",
+        "director": "Steven Spielberg",
+        "movie_banner": "",
+        "release_date": "1993",
+        "rt_score": "92"
+    },
+    {
+        "id": "61d611d1b61413ec06e55a85",
+        "title": "Back To The Future",
+        "original_title": "Back To The Future",
+        "description": "In this 1980s sci-fi classic, small-town California teen Marty McFly (Michael J. Fox) is thrown back into the '50s when an experiment by his eccentric scientist friend Doc Brown (Christopher Lloyd) goes awry. Traveling through time in a modified DeLorean car, Marty encounters young versions of his parents (Crispin Glover, Lea Thompson), and must make sure that they fall in love or he'll cease to exist. Even more dauntingly, Marty has to return to his own time and save the life of Doc Brown. ",
+        "director": "Robert Zemeckis",
+        "movie_banner": "",
+        "release_date": "1985",
+        "rt_score": "96"
+    }
+]
