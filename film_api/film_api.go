@@ -6,7 +6,20 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"net/http"
+	"strconv"
 )
+
+type film struct {
+	ID            primitive.ObjectID `bson:"_id" json:"id,omitempty"`
+	Title         string             `json:"title"`
+	OriginalTitle string             `bson:"original_title" json:"original_title"`
+	Description   string             `json:"description"`
+	Director      string             `json:"director"`
+	Image         string             `json:"image"`
+	MovieBanner   string             `bson:"movie_banner" json:"movie_banner"`
+	ReleaseDate   string             `bson:"release_date" json:"release_date"`
+	Rating        string             `bson:"rt_score" json:"rt_score"`
+}
 
 var client *mongo.Client
 var filmColl *mongo.Collection
@@ -30,8 +43,11 @@ func CloseFilmApiRoutes() {
 func getFilms(c *gin.Context) {
 	c.Header("Access-Control-Allow-Origin", "*")
 
-	//c.IndentedJSON(http.StatusOK, films)
-	movies := FindFilms(filmColl, bson.D{})
+	limit := 20
+	if l := c.Query("limit"); len(l) > 0 {
+		limit, _ = strconv.Atoi(l)
+	}
+	movies := FindFilms(filmColl, bson.D{}, limit)
 
 	c.IndentedJSON(http.StatusOK, movies)
 }

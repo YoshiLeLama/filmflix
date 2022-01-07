@@ -20,6 +20,7 @@ func serveApp(c *gin.Context) {
 func serveJS(c *gin.Context) {
 	if matched, _ := regexp.Match(`js\z`, []byte(c.Request.RequestURI)); matched {
 		c.Writer.Header().Set("Content-Type", "application/javascript")
-		c.Next()
+
 	}
+	c.Next()
 }
