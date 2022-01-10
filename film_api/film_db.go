@@ -2,36 +2,24 @@ package film_api
 
 import (
 	"context"
+	"filmflix/db_connection"
 	"fmt"
+	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"os"
 )
 
-func ConnectToDB() (client *mongo.Client) {
-	dbUrl := os.Getenv("DB_URL")
-	client, err := mongo.Connect(context.TODO(), options.Client().ApplyURI(dbUrl))
-	if err != nil {
-		panic(err)
-	}
-	return
+var filmColl *mongo.Collection
+
+func InitFilmCollection(client *mongo.Client) {
+	filmColl = db_connection.GetCollection(client, "films", "films")
 }
 
-func DisconnectFromDB(client *mongo.Client) {
-	if err := client.Disconnect(context.TODO()); err != nil {
-		panic(err)
-	}
-}
-
-func GetCollection(client *mongo.Client, db string, coll string) *mongo.Collection {
-	return client.Database(db).Collection(coll)
-}
-
-func FindFilm(collection *mongo.Collection, criteria bson.D) film {
-	var film film
-	err := collection.FindOne(context.TODO(), criteria).Decode(film)
+func FindFilm(filter bson.D) Film {
+	var film Film
+	err := filmColl.FindOne(context.TODO(), filter).Decode(&film)
 
 	if err == mongo.ErrNoDocuments {
 		fmt.Printf("No document was found\n")
@@ -46,10 +34,12 @@ func FindFilm(collection *mongo.Collection, criteria bson.D) film {
 	return film
 }
 
-func FindFilms(collection *mongo.Collection, criteria bson.D, maxCount int) []film {
-	var results []film
+// FindFilms retrieves a given amount of films from the given collection
+func FindFilms(filter bson.M, maxCount int) []Film {
+	var results []Film
 	limit := int64(maxCount)
-	cursor, err := collection.Find(context.TODO(), criteria, &options.FindOptions{Limit: &limit})
+	cursor, err := filmColl.Find(context.TODO(), filter, &options.FindOptions{Limit: &limit, Sort: bson.D{{"title", 1}}})
+
 	if err != nil {
 		panic(err)
 	}
@@ -61,21 +51,51 @@ func FindFilms(collection *mongo.Collection, criteria bson.D, maxCount int) []fi
 	return results
 }
 
-func AddFilm(collection *mongo.Collection, item film) film {
-	item.ID = primitive.NewObjectID()
+// AddFilm adds a film to the given collection and return the film with its id
+func AddFilm(film Film) Film {
+	film.Id = primitive.NewObjectID()
 
-	_, err := collection.InsertOne(context.TODO(), item)
+	director := FindDirector(directorColl, bson.D{{"name", film.Director}})
+
+	if len(director.Id.String()) == 0 {
+		director = AddDirector(directorColl, Director{
+			Name:  film.Director,
+			Films: []string{film.Id.Hex()},
+		})
+	} else {
+		director.Films = append(director.Films, film.Id.Hex())
+		fmt.Println(director)
+		UpdateDirectorById(directorColl, director.Id.Hex(), director)
+	}
+
+	film.Director = director.Id.Hex()
+
+	_, err := filmColl.InsertOne(context.TODO(), film)
 	if err != nil {
 		panic(err)
 	}
 
-	return item
+	return film
 }
 
-func UpdateFilm(collection *mongo.Collection, idString string, data interface{}) int64 {
+// UpdateFilmById update a film of the database with the given data and returns the number of modified items
+func UpdateFilmById(collection *mongo.Collection, idString string, data interface{}) (int64, error) {
 	id, _ := primitive.ObjectIDFromHex(idString)
 
 	result, err := collection.UpdateOne(context.TODO(), bson.D{{"_id", id}}, bson.D{{"$set", data}})
+	if err != nil {
+		return 0, err
+	}
+
+	return result.ModifiedCount, nil
+}
+
+// ReplaceFilm replaces the item with the given id and returns the number of modified items
+func ReplaceFilm(idString string, newFilm Film) int64 {
+	id, _ := primitive.ObjectIDFromHex(idString)
+	newFilm.Id = id
+
+	result, err := filmColl.ReplaceOne(context.TODO(), bson.D{{"_id", id}}, newFilm)
 	if err != nil {
 		panic(err)
 	}
@@ -83,13 +103,56 @@ func UpdateFilm(collection *mongo.Collection, idString string, data interface{})
 	return result.ModifiedCount
 }
 
-func DeleteFilm(collection *mongo.Collection, idString string) int64 {
-	id, _ := primitive.ObjectIDFromHex(idString)
+func AddRoles(idString string, roles []Role) (int64, error) {
+	id, err := primitive.ObjectIDFromHex(idString)
 
-	result, err := collection.DeleteOne(context.TODO(), bson.D{{"_id", id}})
 	if err != nil {
-		panic(err)
+		return 0, err
 	}
 
-	return result.DeletedCount
+	result, err := filmColl.UpdateOne(context.TODO(), bson.D{{"_id", id}}, bson.M{"$push": bson.M{"roles": bson.M{"$each": roles}}})
+	if err != nil {
+		return 0, err
+	}
+
+	return result.ModifiedCount, nil
+}
+
+func AddActorsToFilm(idString string, actors []Role) (int64, error) {
+	id, err := primitive.ObjectIDFromHex(idString)
+
+	if err != nil {
+		return 0, err
+	}
+
+	result, err := filmColl.UpdateOne(context.TODO(), bson.D{{"_id", id}}, bson.M{"$push": bson.M{"roles": bson.M{"$each": actors}}})
+	if err != nil {
+		return 0, err
+	}
+
+	return result.ModifiedCount, nil
+}
+
+func AreActorsIdsValid(roles []Role) (bool, gin.H) {
+	tempIds := make(map[string]struct{})
+	for i, role := range roles {
+		tempIds[role.ActorId] = struct{}{}
+		if !primitive.IsValidObjectID(role.ActorId) {
+			return false, gin.H{"message": fmt.Sprintf("Id of item no. %v is invalid", i)}
+		}
+	}
+
+	actorsIds := make([]primitive.ObjectID, len(tempIds))
+	i := 0
+	for k := range tempIds {
+		actorsIds[i], _ = primitive.ObjectIDFromHex(k)
+		i++
+	}
+
+	result := FindActors(bson.M{"_id": bson.M{"$in": actorsIds}}, len(actorsIds))
+
+	if len(result) != len(actorsIds) {
+		return false, gin.H{"message": "At least one actor id does not exists"}
+	}
+	return true, nil
 }
