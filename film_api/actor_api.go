@@ -1,7 +1,6 @@
 package film_api
 
 import (
-	"fmt"
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -11,9 +10,9 @@ import (
 )
 
 type Actor struct {
-	Id    primitive.ObjectID `bson:"_id" json:"id,omitempty"`
-	Name  string             `json:"name"`
-	Films []string           `json:"films"` // Films is the slice of the films the actor played in
+	Id    primitive.ObjectID `bson:"_id,omitempty" json:"id,omitempty"`
+	Name  string             `json:"name,omitempty" bson:"name"`
+	Films []string           `json:"films" bson:"films"` // Films is the slice of the films the actor played in
 }
 
 func InitActorApiRoutes(apiRoutes *gin.RouterGroup, client *mongo.Client) {
@@ -38,6 +37,11 @@ func GetActors(c *gin.Context) {
 }
 
 func PostActor(c *gin.Context) {
+	if !CheckAuthKey(c) {
+		c.IndentedJSON(http.StatusForbidden, gin.H{"message": "Authentication failed"})
+		return
+	}
+
 	var newActor Actor
 
 	if err := c.BindJSON(&newActor); err != nil {
@@ -54,6 +58,7 @@ func PostActor(c *gin.Context) {
 		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": err})
 	}
 
+	// Add the actor id to the films he played in
 	for _, film := range newActor.Films {
 		filmInter := film
 		go func() {
@@ -68,41 +73,81 @@ func PostActor(c *gin.Context) {
 }
 
 func UpdateActor(c *gin.Context) {
-	var updateData interface{}
-
-	if err := c.BindJSON(&updateData); err != nil {
+	if !CheckAuthKey(c) {
+		c.IndentedJSON(http.StatusForbidden, gin.H{"message": "Authentication failed"})
 		return
 	}
 
-	result := UpdateActorById(c.Param("id"), updateData)
+	var updateData Actor
+	idString := c.Param("id")
+
+	id, err := primitive.ObjectIDFromHex(idString)
+	if err != nil {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"0message": err.Error()})
+		return
+	}
+
+	oldData := FindActor(bson.M{"_id": id})
+
+	if err := c.BindJSON(&updateData); err != nil {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"1message": err.Error()})
+		return
+	}
+
+	result := UpdateActorById(idString, updateData)
+
+	removedFilms := difference(oldData.Films, updateData.Films)
+	for _, film := range removedFilms {
+		film := film
+		go func() {
+			_, err := RemoveActorsFromFilm(film, []string{idString})
+			if err != nil {
+				panic(err)
+			}
+		}()
+	}
+
+	newFilms := difference(updateData.Films, oldData.Films)
+	for _, film := range newFilms {
+		film := film
+		go func() {
+			_, err := AddActorsToFilm(film, []Role{{ActorId: idString}})
+			if err != nil {
+				panic(err)
+			}
+		}()
+	}
+
 	c.IndentedJSON(http.StatusNoContent, result)
 }
 
 func DeleteActor(c *gin.Context) {
-	id := c.Param("id")
-	filmIdObj, _ := primitive.ObjectIDFromHex(id)
+	if !CheckAuthKey(c) {
+		c.IndentedJSON(http.StatusForbidden, gin.H{"message": "Authentication failed"})
+		return
+	}
 
-	film := FindFilm(bson.D{{"_id", filmIdObj}})
+	id, err := primitive.ObjectIDFromHex(c.Param("id"))
+	if err != nil {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": err.Error()})
+		return
+	}
 
-	result := DeleteItemById(filmColl, id)
+	oldActor := FindActor(bson.M{"_id": id})
+
+	result := DeleteItemById(actorColl, id.Hex())
 
 	if result == 0 {
 		c.IndentedJSON(http.StatusNotModified, gin.H{"message": "No film with the specified id"})
 		return
 	}
 
-	directorId, _ := primitive.ObjectIDFromHex(film.Director)
-	director := FindDirector(directorColl, bson.D{{"_id", directorId}})
-	fmt.Println(directorId)
-
-	var newDirectorFilms []string
-	for _, v := range director.Films {
-		if v != id {
-			newDirectorFilms = append(newDirectorFilms, v)
+	for _, film := range oldActor.Films {
+		_, err := RemoveActorsFromFilm(film, []string{id.Hex()})
+		if err != nil {
+			return
 		}
 	}
-	director.Films = newDirectorFilms
-	_ = UpdateDirectorById(directorColl, director.Id.Hex(), director)
 
 	c.IndentedJSON(http.StatusNoContent, result)
 }

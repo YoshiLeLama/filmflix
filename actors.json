@@ -1,0 +1,25 @@
+[{
+  "_id": {
+    "$oid": "61dc795692519e55dbffc334"
+  },
+  "name": "Michael J. Fox",
+  "films": [
+    "61d6e2b49873f88eb431b7f4"
+  ]
+},{
+  "_id": {
+    "$oid": "61dca64092519e55dbffc34d"
+  },
+  "name": "Christopher Lloyd",
+  "films": [
+    "61d6e2b49873f88eb431b7f4"
+  ]
+},{
+  "_id": {
+    "$oid": "61dcc41117a6da7e128cb4f2"
+  },
+  "name": "Léa Thompson",
+  "films": [
+    "61d6e2b49873f88eb431b7f4"
+  ]
+}]

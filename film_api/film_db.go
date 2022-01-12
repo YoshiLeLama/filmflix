@@ -17,7 +17,7 @@ func InitFilmCollection(client *mongo.Client) {
 	filmColl = db_connection.GetCollection(client, "films", "films")
 }
 
-func FindFilm(filter bson.D) Film {
+func FindFilm(filter bson.M) Film {
 	var film Film
 	err := filmColl.FindOne(context.TODO(), filter).Decode(&film)
 
@@ -55,21 +55,6 @@ func FindFilms(filter bson.M, maxCount int) []Film {
 func AddFilm(film Film) Film {
 	film.Id = primitive.NewObjectID()
 
-	director := FindDirector(directorColl, bson.D{{"name", film.Director}})
-
-	if len(director.Id.String()) == 0 {
-		director = AddDirector(directorColl, Director{
-			Name:  film.Director,
-			Films: []string{film.Id.Hex()},
-		})
-	} else {
-		director.Films = append(director.Films, film.Id.Hex())
-		fmt.Println(director)
-		UpdateDirectorById(directorColl, director.Id.Hex(), director)
-	}
-
-	film.Director = director.Id.Hex()
-
 	_, err := filmColl.InsertOne(context.TODO(), film)
 	if err != nil {
 		panic(err)
@@ -79,10 +64,10 @@ func AddFilm(film Film) Film {
 }
 
 // UpdateFilmById update a film of the database with the given data and returns the number of modified items
-func UpdateFilmById(collection *mongo.Collection, idString string, data interface{}) (int64, error) {
+func UpdateFilmById(idString string, data interface{}) (int64, error) {
 	id, _ := primitive.ObjectIDFromHex(idString)
 
-	result, err := collection.UpdateOne(context.TODO(), bson.D{{"_id", id}}, bson.D{{"$set", data}})
+	result, err := filmColl.UpdateOne(context.TODO(), bson.D{{"_id", id}}, bson.D{{"$set", data}})
 	if err != nil {
 		return 0, err
 	}
@@ -133,26 +118,69 @@ func AddActorsToFilm(idString string, actors []Role) (int64, error) {
 	return result.ModifiedCount, nil
 }
 
-func AreActorsIdsValid(roles []Role) (bool, gin.H) {
+func RemoveActorsFromFilm(idString string, actorsIds []string) (int64, error) {
+	id, err := primitive.ObjectIDFromHex(idString)
+	if err != nil {
+		return 0, err
+	}
+
+	result, err := filmColl.UpdateOne(context.TODO(), bson.M{"_id": id}, bson.M{"$pull": bson.M{"roles": bson.M{"actor": bson.M{"$in": actorsIds}}}})
+	if err != nil {
+		return 0, err
+	}
+
+	return result.ModifiedCount, err
+}
+func AddDirectorsToFilm(idString string, directors []string) (int64, error) {
+	id, err := primitive.ObjectIDFromHex(idString)
+
+	if err != nil {
+		return 0, err
+	}
+
+	result, err := filmColl.UpdateOne(context.TODO(), bson.D{{"_id", id}}, bson.M{"$push": bson.M{"directors": bson.M{"$each": directors}}})
+	if err != nil {
+		return 0, err
+	}
+
+	return result.ModifiedCount, nil
+}
+
+func RemoveDirectorsFromFilm(idString string, directorsIds []string) (int64, error) {
+	id, err := primitive.ObjectIDFromHex(idString)
+	if err != nil {
+		return 0, err
+	}
+
+	result, err := filmColl.UpdateOne(context.TODO(), bson.M{"_id": id}, bson.M{"$pull": bson.M{"directors": bson.M{"$in": directorsIds}}})
+	if err != nil {
+		return 0, err
+	}
+
+	return result.ModifiedCount, err
+}
+
+func AreFilmsIdsValid(ids []string) (bool, gin.H) {
 	tempIds := make(map[string]struct{})
-	for i, role := range roles {
-		tempIds[role.ActorId] = struct{}{}
-		if !primitive.IsValidObjectID(role.ActorId) {
-			return false, gin.H{"message": fmt.Sprintf("Id of item no. %v is invalid", i)}
+	for i, id := range ids {
+		tempIds[id] = struct{}{}
+		if !primitive.IsValidObjectID(id) {
+			return false, gin.H{"message": fmt.Sprintf("Id of film no. %v is invalid", i)}
 		}
 	}
 
-	actorsIds := make([]primitive.ObjectID, len(tempIds))
+	filmsIds := make([]primitive.ObjectID, len(tempIds))
 	i := 0
 	for k := range tempIds {
-		actorsIds[i], _ = primitive.ObjectIDFromHex(k)
+		filmsIds[i], _ = primitive.ObjectIDFromHex(k)
 		i++
 	}
 
-	result := FindActors(bson.M{"_id": bson.M{"$in": actorsIds}}, len(actorsIds))
+	result := FindFilms(bson.M{"_id": bson.M{"$in": filmsIds}}, len(filmsIds))
 
-	if len(result) != len(actorsIds) {
-		return false, gin.H{"message": "At least one actor id does not exists"}
+	if len(result) != len(filmsIds) {
+		return false, gin.H{"message": "At least one film id does not exists"}
 	}
+
 	return true, nil
 }

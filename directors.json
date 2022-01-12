@@ -1,0 +1,53 @@
+[{
+  "_id": {
+    "$oid": "61d9b828f4d351b6f5e3adf0"
+  },
+  "name": "Robert Zemeckis",
+  "films": [
+    "61d99cc9a510c0e65b977435",
+    "61d6e2b49873f88eb431b7f4",
+    "61d6e2b49873f88eb431b7f5"
+  ]
+},{
+  "_id": {
+    "$oid": "61d9b88bf4d351b6f5e3adf1"
+  },
+  "name": "Steven Spielberg",
+  "films": [
+    "61d6e2b49873f88eb431b7f3"
+  ]
+},{
+  "_id": {
+    "$oid": "61d9b8b5f4d351b6f5e3adf2"
+  },
+  "name": "Luc Besson",
+  "films": [
+    "61d6e2b49873f88eb431b7f2"
+  ]
+},{
+  "_id": {
+    "$oid": "61d9b8e6f4d351b6f5e3adf3"
+  },
+  "name": "Gore Verbinski",
+  "films": [
+    "61d7042cd2dd1c9fb1dabbdb"
+  ]
+},{
+  "_id": {
+    "$oid": "61d9b90df4d351b6f5e3adf4"
+  },
+  "name": "Peter Jackson",
+  "films": [
+    "61d70815d2dd1c9fb1dabbde",
+    "61d7092b74569e80206914f1",
+    "61d7459d5d653d2c1e48ef44"
+  ]
+},{
+  "_id": {
+    "$oid": "61d9c906f4d351b6f5e3adf5"
+  },
+  "name": "Gary Ross",
+  "films": [
+    "61d7076fd2dd1c9fb1dabbdd"
+  ]
+}]

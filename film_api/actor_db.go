@@ -61,7 +61,7 @@ func AddActor(actor Actor) (Actor, error) {
 func UpdateActorById(idString string, data interface{}) int64 {
 	id, _ := primitive.ObjectIDFromHex(idString)
 
-	result, err := actorColl.UpdateOne(context.TODO(), bson.D{{"_id", id}}, bson.D{{"$set", data}})
+	result, err := actorColl.UpdateOne(context.TODO(), bson.D{{"_id", id}}, bson.M{"$set": data})
 	if err != nil {
 		panic(err)
 	}
@@ -103,14 +103,7 @@ func RemoveFilmsFromActor(idString string, films []string) (int64, error) {
 		return 0, err
 	}
 
-	filmsId := make([]primitive.ObjectID, len(films))
-	i := 0
-	for _, v := range films {
-		filmsId[i], _ = primitive.ObjectIDFromHex(v)
-		i++
-	}
-
-	result, err := actorColl.UpdateOne(context.TODO(), bson.M{"_id": id}, bson.M{"$pull": bson.M{"films": bson.M{"$in": filmsId}}})
+	result, err := actorColl.UpdateOne(context.TODO(), bson.M{"_id": id}, bson.M{"$pull": bson.M{"films": bson.M{"$in": films}}})
 	if err != nil {
 		return 0, err
 	}
@@ -118,27 +111,26 @@ func RemoveFilmsFromActor(idString string, films []string) (int64, error) {
 	return result.ModifiedCount, nil
 }
 
-func AreFilmsIdsValid(ids []string) (bool, gin.H) {
+func AreActorsIdsValid(roles []Role) (bool, gin.H) {
 	tempIds := make(map[string]struct{})
-	for i, id := range ids {
-		tempIds[id] = struct{}{}
-		if !primitive.IsValidObjectID(id) {
-			return false, gin.H{"message": fmt.Sprintf("Id of film no. %v is invalid", i)}
+	for i, role := range roles {
+		tempIds[role.ActorId] = struct{}{}
+		if !primitive.IsValidObjectID(role.ActorId) {
+			return false, gin.H{"message": fmt.Sprintf("Id of actor no. %v is invalid", i)}
 		}
 	}
 
-	filmsIds := make([]primitive.ObjectID, len(tempIds))
+	actorsIds := make([]primitive.ObjectID, len(tempIds))
 	i := 0
 	for k := range tempIds {
-		filmsIds[i], _ = primitive.ObjectIDFromHex(k)
+		actorsIds[i], _ = primitive.ObjectIDFromHex(k)
 		i++
 	}
 
-	result := FindFilms(bson.M{"_id": bson.M{"$in": filmsIds}}, len(filmsIds))
+	result := FindActors(bson.M{"_id": bson.M{"$in": actorsIds}}, len(actorsIds))
 
-	if len(result) != len(filmsIds) {
-		return false, gin.H{"message": "At least one film id does not exists"}
+	if len(result) != len(actorsIds) {
+		return false, gin.H{"message": "At least one actor id does not exists"}
 	}
-
 	return true, nil
 }
