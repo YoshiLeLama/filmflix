@@ -1,1 +1,4 @@
 .env
+actors.json
+directors.json
+films.json
